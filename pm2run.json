@@ -1,0 +1,9 @@
+{
+    "apps": [
+        {
+            "name": "backend-app",
+            "script": "npm",
+            "args" : "run start:prod"
+        }
+    ]
+}

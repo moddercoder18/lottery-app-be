@@ -1,0 +1,91 @@
+<!DOCTYPE html>
+<html>
+  <head>
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+  </head>
+  <body>
+    <!-- Replace "test" with your own sandbox Business account app client ID -->
+    <script src="https://www.paypal.com/sdk/js?client-id=ASIH6ooy4KeQoTcH3otgVWBV9RVCHds6s-PyMA62gb6zBA5zeAT49RhUEdTHEH5AQmZNp5_5Yx9sxyrw&currency=USD"></script>
+    <!-- Set up a container element for the button -->
+    <div id="paypal-button-container"></div>
+    <script>
+      paypal
+        .Buttons({
+          // Order is created on the server and the order id is returned
+          createOrder() {
+            return fetch(
+              "http://3.129.62.246/transaction",
+              {
+                method: "POST",
+                headers: {
+                  "Content-Type": "application/json",
+                  "Authorization": 'Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpYXQiOjE2ODM2MzYwMzEsImV4cCI6MTY4MzcyMjQzMSwic3ViIjoiNjQ0MmNhNjY1YWY2MTdjNzRlYzU5OWU2In0.dqb-Nojz3O31vkmUkIiYyJfoDoBp86RvCTtDhSke6uU'
+                },
+                // use the "body" param to optionally pass additional order information
+                // like product skus and quantities
+                body: JSON.stringify({
+                  customerTicket: {
+                    hasMultiplier: false,
+                    lotteryId: "64395cb9ed5b3cdbeb61f4bb",
+                    tickets: [
+                      {
+                        numbers: [1, 2, 3, 4, 5],
+                        powerNumbers: [1, 2],
+                      },
+                      {
+                        numbers: [1, 2, 3, 4, 6],
+                        powerNumbers: [1, 3],
+                      },
+                      {
+                        numbers: [1, 2, 3, 4, 7],
+                        powerNumbers: [1, 5],
+                      },
+                    ],
+                    type: "one-time-entry",
+                    systematicNumber: null,
+                  },
+                  type: "multi-draw",
+                  customerCurrency: "KRW",
+                  multiDrawSelectedOption: 52
+                }),
+              },
+            )
+              .then(response => response.json())
+              .then(response => response.response.order.id);
+          },
+          // Finalize the transaction on the server after payer approval
+          onApprove(data) {
+            return fetch("http://3.129.62.246/transaction/capture-paypal-order", {
+              method: "POST",
+              headers: {
+                "Content-Type": "application/json",
+                "Authorization": 'Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpYXQiOjE2ODMzNjg4ODQsImV4cCI6MTY4MzQ1NTI4NCwic3ViIjoiNjQ0MmNhNjY1YWY2MTdjNzRlYzU5OWU2In0.S0BuExGERB9ENgo5uHFurrSyDH_fRCN3OvtEjZRcm20'
+              },
+              body: JSON.stringify({
+                orderId: data.orderID,
+              }),
+            })
+              .then(response => response.json())
+              .then(orderData => {
+                // Successful capture! For dev/demo purposes:
+                console.log(
+                  "Capture result",
+                  orderData,
+                  JSON.stringify(orderData, null, 2),
+                );
+                const transaction =
+                  orderData.purchase_units[0].payments.captures[0];
+                alert(
+                  `Transaction ${transaction.status}: ${transaction.id}\n\nSee console for all available details`,
+                );
+                // When ready to go live, remove the alert and show a success message within this page. For example:
+                // const element = document.getElementById('paypal-button-container');
+                // element.innerHTML = '<h3>Thank you for your payment!</h3>';
+                // Or go to another URL:  window.location.href = 'thank_you.html';
+              });
+          },
+        })
+        .render("#paypal-button-container");
+    </script>
+  </body>
+</html>

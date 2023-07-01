@@ -1,0 +1,84 @@
+<!DOCTYPE html>
+<html>
+  <head>
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+  </head>
+  <body>
+    <!-- Replace "test" with your own sandbox Business account app client ID -->
+    <script src="https://www.paypal.com/sdk/js?client-id=ASIH6ooy4KeQoTcH3otgVWBV9RVCHds6s-PyMA62gb6zBA5zeAT49RhUEdTHEH5AQmZNp5_5Yx9sxyrw&currency=USD"></script>
+    <!-- Set up a container element for the button -->
+    <div id="paypal-button-container"></div>
+    <script>
+      let ticketId = ''
+      function getParameterByName(name, url = window.location.href) {
+        name = name.replace(/[\[\]]/g, "\\$&");
+        const regex = new RegExp("[?&]" + name + "(=([^&#]*)|&|#|$)"),
+          results = regex.exec(url);
+        if (!results) return null;
+        if (!results[2]) return "";
+        return decodeURIComponent(results[2].replace(/\+/g, " "));
+      }
+      paypal
+        .Buttons({
+          onCancel() {
+            window.location.href = `${window.location.origin}/payment/cancel.html`;
+          },
+          // Order is created on the server and the order id is returned
+          createOrder() {
+            return fetch(`${window.location.origin}/transaction`, {
+              method: "POST",
+              headers: {
+                "Content-Type": "application/json",
+                Authorization: `Bearer ${getParameterByName("token")}`,
+              },
+              // use the "body" param to optionally pass additional order information
+              // like product skus and quantities
+              body: getParameterByName("transactionCreateDto"),
+            })
+              .then(response => response.json())
+              .then(response => {
+                console.log('response', response)
+                ticketId = response.customerTicketId;
+                return response.response.order.id
+              })
+              .catch((e) => {
+                window.location.href = `${window.location.origin}/payment/cancel.html?eMsg=${e?.message || e || 'Error'}`;
+              })
+          },
+          // Finalize the transaction on the server after payer approval
+          onApprove(data) {
+            return fetch(
+              `${window.location.origin}/transaction/capture-paypal-order`,
+              {
+                method: "POST",
+                headers: {
+                  "Content-Type": "application/json",
+                  Authorization: `Bearer ${getParameterByName("token")}`,
+                },
+                body: JSON.stringify({
+                  orderId: data.orderID,
+                }),
+              },
+            )
+              .then(response => response.json())
+              .then(orderData => {
+                // Successful capture! For dev/demo purposes:
+                console.log(
+                  "Capture result",
+                  orderData,
+                  JSON.stringify(orderData, null, 2),
+                );
+                window.location.href = `${window.location.origin}/payment/success.html?ticketId=${ticketId}`;
+                // When ready to go live, remove the alert and show a success message within this page. For example:
+                // const element = document.getElementById('paypal-button-container');
+                // element.innerHTML = '<h3>Thank you for your payment!</h3>';
+                // Or go to another URL:  window.location.href = 'thank_you.html';
+              }).catch(() => {
+                window.location.href = `${window.location.origin}/payment/failed.html?ticketId=${ticketId}`;
+              });
+          },
+        })
+        .render("#paypal-button-container");
+    </script>
+  </body>
+</html>
