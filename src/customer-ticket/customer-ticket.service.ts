@@ -59,13 +59,21 @@ export class CustomerTicketService {
   }
 
   async getAssignedTicketsToAgent(agent: User): Promise<CustomerTicket[]> {
+    const currentLottery = await this.lotteryService.getActiveLotteries('America/Los_Angeles', [LotteryType.MegaMillions, LotteryType.PowerBall]);
     const assignedAgentTicket = await this.customerTicketModel
       .find({
         agentId: agent._id,
         isActive: true,
         status: {
           $in: ["assigned", "purchasing-physical-ticket"]
-        }
+        },
+        ...(currentLottery.length ? {
+          lotteryId: {
+            $in: currentLottery.map(({ _id }) => _id)
+          }
+        }: {
+
+        }),
       }).populate({
         path: 'lotteryId customerId',
         select: {
@@ -105,31 +113,39 @@ export class CustomerTicketService {
     status: string,
     startDate: Date, endDate: Date, lotteryType: LotteryType, agentId: ObjectId
   }): Promise<CustomerTicket[]> {
-
+    const currentLottery = await this.lotteryService.getActiveLotteries('America/Los_Angeles', [filters.lotteryType]);
+    
     const customerTickets = await this.customerTicketModel
       .find({
         isActive: true,
+        ...(currentLottery.length ? {
+          lotteryId: {
+            $in: currentLottery.map(({ _id }) => _id)
+          }
+        }: {
+
+        }),
         ...(filters.status ? { status: filters.status } : {
           status: {
             $nin: ["draft"]
           }
         }),
         ...(filters.agentId ? { agentId: filters.agentId } : {}),
-        ...(filters.startDate && filters.endDate ? {
-          startDate: {
-            $gte: filters.startDate,
-          }, endDate: {
-            $lte: filters.endDate
-          }
-        } : filters.startDate ? {
-          startDate: {
-            $gte: filters.startDate,
-          }
-        } : filters.endDate ? {
-          endDate: {
-            $lte: filters.endDate
-          }
-        } : {})
+        // ...(filters.startDate && filters.endDate ? {
+        //   startDate: {
+        //     $gte: filters.startDate,
+        //   }, endDate: {
+        //     $lte: filters.endDate
+        //   }
+        // } : filters.startDate ? {
+        //   startDate: {
+        //     $gte: filters.startDate,
+        //   }
+        // } : filters.endDate ? {
+        //   endDate: {
+        //     $lte: filters.endDate
+        //   }
+        // } : {})
       }).sort({
         'createdAt': -1
       }).populate([{

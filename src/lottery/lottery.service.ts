@@ -28,12 +28,15 @@ export class LotteryService {
     private readonly userService: UserService, private readonly settingService: SettingService,
   ) { }
 
-  async getActiveLotteries(timezone: string): Promise<Lottery[]> {
+  async getActiveLotteries(timezone: string, type: LotteryType[] = [LotteryType.MegaMillions, LotteryType.PowerBall]): Promise<Lottery[]> {
     const lotteries = await this.lotteryModel
       .find({
         isActive: true,
         markAsPublish: true,
         markAsComplete: false,
+        type: {
+          $in: type
+        }
         // endDate: {
         //   $gte: moment(new Date()).tz(timezone)
         // }
@@ -348,7 +351,6 @@ export class LotteryService {
             prizeBreakDown: [...PowerBallLotteryStatic.prizeBreakDown].map(({ number, powerNumber, price }) => ({
               number, powerNumber, price: Number(String(price).replace('{{JACK_POT}}', `${jackpot?.length ? Number(jackpot[0]) * 1000000 : 0}`))
             })),
-            markAsComplete: true,
           }
         }, {
           new: true
@@ -487,7 +489,6 @@ export class LotteryService {
             prizeBreakDown: [...MegaMillionsLotteryStatic.prizeBreakDown].map(({ number, powerNumber, price }) => ({
               number, powerNumber, price: Number(String(price).replace('{{JACK_POT}}', `${jackpot?.length ? Number(jackpot[0]) * 1000000 : 0}`))
             })),
-            markAsComplete: true,
           }
         }, {
           new: true
